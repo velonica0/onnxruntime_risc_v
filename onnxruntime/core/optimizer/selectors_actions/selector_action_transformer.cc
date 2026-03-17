@@ -70,11 +70,11 @@ auto SelectorActionRegistry::LookUpByOpTypeAndDomain(const std::string& op_type,
 
 SelectorActionTransformer::SelectorActionTransformer(const std::string& name,
                                                      SelectorActionRegistry&& selector_action_registry,
-                                                     const SatApplyContextVariant& apply_context,
+                                                     SatApplyContextVariant apply_context,
                                                      const InlinedHashSet<std::string_view>& compatible_execution_providers)
     : GraphTransformer{name, compatible_execution_providers},
       selector_action_registry_{std::move(selector_action_registry)},
-      apply_context_{apply_context} {}
+      apply_context_{std::move(apply_context)} {}
 
 #if !defined(ORT_MINIMAL_BUILD)
 
@@ -147,7 +147,7 @@ static Status MatchAndProcess(
       RuntimeOptimizationRecord::ProducedOpIdVector produced_op_ids{};
       produced_op_ids.reserve(action_saved_state.produced_node_op_schemas.size());
 
-      for (const auto op_schema : action_saved_state.produced_node_op_schemas) {
+      for (const auto& op_schema : action_saved_state.produced_node_op_schemas) {
         produced_op_ids.push_back(utils::MakeOpId(*op_schema));
         if (save_context->record_produced_node_op_schema) {
           status = save_context->record_produced_node_op_schema(*op_schema);

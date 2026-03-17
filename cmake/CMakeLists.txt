@@ -720,6 +720,10 @@ else()
   if (HAS_DEPRECATED_BUILTINS)
     list(APPEND ORT_WARNING_FLAGS -Wno-deprecated-builtins)
   endif()
+  check_cxx_compiler_flag(-Wno-interference-size HAS_NO_INTERFERENCE_SIZE)
+  if (HAS_NO_INTERFERENCE_SIZE)
+    list(APPEND ORT_WARNING_FLAGS -Wno-interference-size)
+  endif()
   #see:https://reviews.llvm.org/D131307
   #It was intended that the 'enum-constexpr-conversion' type warnings can not be silenced by -w
   if(HAS_ENUM_CONSTEXPR_CONVERSION AND NOT Protobuf_FOUND)

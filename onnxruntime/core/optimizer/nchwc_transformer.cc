@@ -598,8 +598,12 @@ void NchwcTransformerImpl::TransformBinary(Node& node, bool add_node) {
   auto& output_defs = node.MutableOutputDefs();
 
   // Verify that all of the inputs to this operator are from NCHWc outputs.
-  InlinedVector<NchwcArgument*> nchwc_inputs;
   size_t input_defs_count = input_defs.size();
+  if (input_defs_count == 0) {
+    return;
+  }
+
+  InlinedVector<NchwcArgument*> nchwc_inputs;
   nchwc_inputs.reserve(input_defs_count);
   for (size_t i = 0; i < input_defs_count; i++) {
     auto* nchwc_input = LookupNchwcArgument(input_defs[i]);
