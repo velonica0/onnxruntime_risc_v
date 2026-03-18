@@ -168,7 +168,7 @@ MLAS_FORCEINLINE void
 #include "core/common/cpuid_info.h"
 using MLAS_CPUIDINFO = onnxruntime::CPUIDInfo;
 
-#include "core/common/float16.h"
+#include "core/framework/float16.h"
 
 #else  // BUILD_MLAS_NO_ONNXRUNTIME
 
@@ -1248,23 +1248,23 @@ extern const MLAS_FPQ4GEMM_DISPATCH MlasFpQ4GemmDispatchAvx512;
 // Float/quantized n-bit integer matrix/matrix multiply dispatch structure.
 //
 
-struct MLAS_QNBIT_GEMM_DISPATCH;
+struct MLAS_SQNBIT_GEMM_DISPATCH;
 
-const MLAS_QNBIT_GEMM_DISPATCH&
-GetMlasQNBitGemmDispatchNeon(
+const MLAS_SQNBIT_GEMM_DISPATCH&
+GetMlasSQNBitGemmDispatchNeon(
     bool InitializeWithDotSupport,
     bool InitializeWithI8MMSupport
 );
 
-extern const MLAS_QNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx2;
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx2;
 
-extern const MLAS_QNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx2vnni;
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx2vnni;
 
-extern const MLAS_QNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx512;
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx512;
 
-extern const MLAS_QNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx512vnni;
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx512vnni;
 
-extern const MLAS_QNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchLasx;
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchLasx;
 
 //
 // Rotary embedding dispatch structure.
@@ -1481,7 +1481,7 @@ struct MLAS_PLATFORM {
     const MLAS_FPQ4GEMM_DISPATCH* FpQ4GemmDispatch{nullptr};
     const MLAS_Q8Q4GEMM_DISPATCH* Q8Q4GemmDispatch{nullptr};
 
-    const MLAS_QNBIT_GEMM_DISPATCH* QNBitGemmDispatch{nullptr};
+    const MLAS_SQNBIT_GEMM_DISPATCH* SQNBitGemmDispatch{nullptr};
 
     MLAS_CAST_F16_TO_F32_KERNEL* CastF16ToF32Kernel;
     MLAS_CAST_F32_TO_F16_KERNEL* CastF32ToF16Kernel;

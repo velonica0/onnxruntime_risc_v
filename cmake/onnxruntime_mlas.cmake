@@ -31,11 +31,8 @@ onnxruntime_add_static_library(onnxruntime_mlas
   ${MLAS_SRC_DIR}/activate.cpp
   ${MLAS_SRC_DIR}/logistic.cpp
   ${MLAS_SRC_DIR}/tanh.cpp
-  ${MLAS_SRC_DIR}/eltwise.h
-  ${MLAS_SRC_DIR}/eltwise.cpp
   ${MLAS_SRC_DIR}/erf.cpp
   ${MLAS_SRC_DIR}/compute.cpp
-  ${MLAS_SRC_DIR}/dequantize.cpp
   ${MLAS_SRC_DIR}/quantize.cpp
   ${MLAS_SRC_DIR}/qgemm_kernel_default.cpp
   ${MLAS_SRC_DIR}/qladd.cpp
@@ -43,15 +40,11 @@ onnxruntime_add_static_library(onnxruntime_mlas
   ${MLAS_SRC_DIR}/qpostprocessor.cpp
   ${MLAS_SRC_DIR}/qlgavgpool.cpp
   ${MLAS_SRC_DIR}/qdwconv_kernelsize.cpp
-  ${MLAS_SRC_DIR}/qnbitgemm.h
-  ${MLAS_SRC_DIR}/qnbitgemm.cpp
+  ${MLAS_SRC_DIR}/sqnbitgemm.h
+  ${MLAS_SRC_DIR}/sqnbitgemm.cpp
   ${MLAS_SRC_DIR}/sqnbitgemm_q8_block.h
   ${MLAS_SRC_DIR}/flashattn.cpp
   ${MLAS_SRC_DIR}/cast.cpp
-  ${MLAS_SRC_DIR}/rotary_embedding.h
-  ${MLAS_SRC_DIR}/rotary_embedding.cpp
-  ${MLAS_SRC_DIR}/softmax.h
-  ${MLAS_SRC_DIR}/saturation_check.cpp
 )
 
 target_sources(onnxruntime_mlas PRIVATE
@@ -951,7 +944,7 @@ if (NOT onnxruntime_ORT_MINIMAL_BUILD)
     target_link_libraries(onnxruntime_mlas_q4dq PRIVATE cpuinfo)
   endif()
   if(NOT WIN32)
-    target_link_libraries(onnxruntime_mlas_q4dq PRIVATE  ${CMAKE_DL_LIBS})
+    target_link_libraries(onnxruntime_mlas_q4dq PRIVATE nsync::nsync_cpp ${CMAKE_DL_LIBS})
   endif()
   if (CMAKE_SYSTEM_NAME STREQUAL "Android")
     target_link_libraries(onnxruntime_mlas_q4dq PRIVATE ${android_shared_libs})
