@@ -528,7 +528,6 @@ FetchContent_Declare(
   URL ${DEP_URL_onnx}
   URL_HASH SHA1=${DEP_SHA1_onnx}
   PATCH_COMMAND ${ONNXRUNTIME_ONNX_PATCH_COMMAND}
-  FIND_PACKAGE_ARGS NAMES ONNX onnx
 )
 if (NOT onnxruntime_MINIMAL_BUILD)
   onnxruntime_fetchcontent_makeavailable(onnx)
