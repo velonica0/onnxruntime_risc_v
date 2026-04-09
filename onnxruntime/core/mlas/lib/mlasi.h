@@ -1266,6 +1266,8 @@ extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchAvx512vnni;
 
 extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchLasx;
 
+extern const MLAS_SQNBIT_GEMM_DISPATCH MlasSQNBitGemmDispatchRiscv;
+
 //
 // Rotary embedding dispatch structure.
 //

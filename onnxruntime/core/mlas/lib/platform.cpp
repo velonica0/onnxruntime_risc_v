@@ -691,6 +691,7 @@ Return Value:
     this->ReduceMinimumMaximumF32Kernel = MlasReduceMinimumMaximumF32Kernel_RVV;
     this->CastF16ToF32Kernel = &MlasCastF16ToF32Kernel_RVV;
     this->CastF32ToF16Kernel = &MlasCastF32ToF16Kernel_RVV;
+    this->SQNBitGemmDispatch = &MlasSQNBitGemmDispatchRiscv;
 #endif // MLAS_TARGET_RISCV64
 }
 

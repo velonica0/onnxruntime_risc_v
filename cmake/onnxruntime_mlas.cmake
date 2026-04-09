@@ -847,6 +847,7 @@ endif()
           ${MLAS_SRC_DIR}/riscv64/MinMaxElementsRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/SGEMM/SgemmKernelRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/SGEMM/SgemvKernelRVV.cpp
+          ${MLAS_SRC_DIR}/riscv64/SQNBit/SQNBitGemmKernelRVV_fp32.cpp
           )
       # Pull in only the scalar files we have NOT replaced with RVV versions.
       # SgemmKernelScalar.cpp and SgemvKernelScalar.cpp are now provided by the
