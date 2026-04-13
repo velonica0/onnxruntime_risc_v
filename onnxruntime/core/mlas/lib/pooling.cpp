@@ -1102,18 +1102,40 @@ static MLAS_POOL_KERNEL_ROUTINE* const MlasPoolGlobalKernels[] =
     MlasPoolGlobalKernel<MLAS_AVERAGE_POOLING>,
 };
 
+
+#if defined(MLAS_TARGET_RISCV64)
+// Native RVV f32m2 pool kernels (riscv64/Pooling/PoolingKernelRVV.cpp).
+extern "C" {
+void MlasPool2DMaxVectorKernel_RVV(const MLAS_POOL_WORK_BLOCK*, size_t, const float*, float*);
+void MlasPool2DAvgIncludePadVectorKernel_RVV(const MLAS_POOL_WORK_BLOCK*, size_t, const float*, float*);
+void MlasPool2DAvgExcludePadVectorKernel_RVV(const MLAS_POOL_WORK_BLOCK*, size_t, const float*, float*);
+}
+#endif
+
 static MLAS_POOL_KERNEL_ROUTINE* const MlasPoolVectorKernels[][2] =
 {
     {
+#if defined(MLAS_TARGET_RISCV64)
+        MlasPool2DMaxVectorKernel_RVV,
+#else
         MlasPool2DVectorKernel<MLAS_MAXIMUM_POOLING>,
+#endif
         MlasPool3DVectorKernel<MLAS_MAXIMUM_POOLING>,
     },
     {
+#if defined(MLAS_TARGET_RISCV64)
+        MlasPool2DAvgExcludePadVectorKernel_RVV,
+#else
         MlasPool2DVectorKernel<MLAS_AVERAGE_POOLING>,
+#endif
         MlasPool3DVectorKernel<MLAS_AVERAGE_POOLING>,
     },
     {
+#if defined(MLAS_TARGET_RISCV64)
+        MlasPool2DAvgIncludePadVectorKernel_RVV,
+#else
         MlasPool2DVectorKernel<MLAS_AVERAGE_POOLING>,
+#endif
         MlasPool3DVectorKernel<MLAS_AVERAGE_POOLING>,
     },
 };
