@@ -845,19 +845,14 @@ endif()
           ${MLAS_SRC_DIR}/riscv64/CastF16F32RVV.cpp
           ${MLAS_SRC_DIR}/riscv64/LogisticKernelRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/MinMaxElementsRVV.cpp
+          ${MLAS_SRC_DIR}/riscv64/SconvDepthwise/SconvDepthwiseKernelRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/SGEMM/SgemmKernelRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/SGEMM/SgemvKernelRVV.cpp
           ${MLAS_SRC_DIR}/riscv64/SQNBit/SQNBitGemmKernelRVV_fp32.cpp
           ${MLAS_SRC_DIR}/riscv64/Pooling/PoolingKernelRVV.cpp
           )
-      # Pull in only the scalar files we have NOT replaced with RVV versions.
-      # SgemmKernelScalar.cpp and SgemvKernelScalar.cpp are now provided by the
-      # RVV files above (the scalar versions assume a 4-wide B-pack layout that
-      # the non-WASM_SCALAR packer in sgemm.cpp does not produce).
-      set(mlas_platform_srcs
-            ${mlas_platform_srcs}
-            ${MLAS_SRC_DIR}/scalar/SconvDepthwiseKernelScalar.cpp
-          )
+      # Scalar fallbacks (SgemmKernelScalar, SgemvKernelScalar, SconvDepthwiseKernelScalar)
+      # are replaced by the RVV files above.
       if(SPINE_COMPILER_SUPPORT_RISCV_SPACEMIT_IME1)
         set(mlas_platform_srcs
             ${mlas_platform_srcs}

@@ -895,6 +895,10 @@ MlasGemmQuantGetDispatch(
     if (GetMlasPlatform().GemmU8X8Dispatch == &MlasGemm8X8DispatchPOWER10) {
         GemmQuantDispatch = GetMlasPlatform().GemmU8X8Dispatch;
     }
+#if defined(MLAS_TARGET_RISCV64) && defined(__linux__)
+#include <riscv_vector.h>
+#endif
+
 #elif defined(MLAS_TARGET_RISCV64) && defined(__linux__)
     auto vlenb = __riscv_vlenb();
     if (vlenb == 32) {

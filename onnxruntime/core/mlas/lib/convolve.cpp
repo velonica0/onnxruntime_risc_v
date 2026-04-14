@@ -903,7 +903,7 @@ Return Value:
         return;
     }
 
-#if defined(MLAS_TARGET_WASM_SCALAR)
+#if defined(MLAS_TARGET_WASM_SCALAR) || defined(__riscv_vector)
 
     if (Algorithm == MlasConvAlgorithmDepthwise) {
         // Fill the Working Buffer with Zero for use by the depthwise kernel.
@@ -976,7 +976,7 @@ Return Value:
                     break;
                 }
 
-#if defined(MLAS_TARGET_WASM_SCALAR)
+#if defined(MLAS_TARGET_WASM_SCALAR) || defined(__riscv_vector)
 
                 case MlasConvAlgorithmDepthwise:
                 {
@@ -1224,7 +1224,7 @@ Return Value:
 
     } else {
 
-#if defined(MLAS_TARGET_WASM_SCALAR)
+#if defined(MLAS_TARGET_WASM_SCALAR) || defined(__riscv_vector)
 
         // Scalar direct conv for depthwise convolution.
         // Currently only support 3x3 kernel with padding <=1 and dilations = 1.
