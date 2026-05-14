@@ -1447,6 +1447,17 @@ if (NOT onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
       PRIVATE ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common ${CMAKE_DL_LIBS})
     target_compile_definitions(onnxruntime_mlas_softmax_riscv_compare PRIVATE ${mlas_private_compile_definitions})
     set_target_properties(onnxruntime_mlas_softmax_riscv_compare PROPERTIES FOLDER "ONNXRuntimeTest")
+
+    onnxruntime_add_executable(
+      onnxruntime_mlas_halfgemm_rvv_bench
+      ${MLAS_RISCV64_BENCH_DIR}/halfgemm_rvv_bench.cpp)
+    target_include_directories(onnxruntime_mlas_halfgemm_rvv_bench PRIVATE
+      ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}/core/mlas/lib)
+    target_link_libraries(
+      onnxruntime_mlas_halfgemm_rvv_bench
+      PRIVATE ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common ${CMAKE_DL_LIBS})
+    target_compile_definitions(onnxruntime_mlas_halfgemm_rvv_bench PRIVATE ${mlas_private_compile_definitions})
+    set_target_properties(onnxruntime_mlas_halfgemm_rvv_bench PROPERTIES FOLDER "ONNXRuntimeTest")
   endif()
 
   if(WIN32)

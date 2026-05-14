@@ -9,9 +9,6 @@ set(MLAS_INC_DIR ${MLAS_ROOT}/inc)
 # mlas_private_compile_definitions contains compile definitions that are private to onnxruntime_mlas and targets which
 # use internal MLAS headers like mlasi.h.
 set(mlas_private_compile_definitions)
-if(onnxruntime_BUILD_UNIT_TESTS)
-  list(APPEND mlas_private_compile_definitions MLAS_ENABLE_TEST_HOOKS)
-endif()
 #
 # All hardware agnostic source files here
 # hardware specific files would cause trouble in
@@ -950,6 +947,32 @@ endif()
               ${MLAS_SRC_DIR}/riscv64/sconv_nchwc_kernel_rvv.cpp
               PROPERTIES COMPILE_FLAGS "-march=rv64gcv -mabi=lp64d")
             list(APPEND mlas_private_compile_definitions MLAS_USE_RVV=1)
+
+            # Check for Zvfh (vector half-precision float) support
+            set(OLD_CMAKE_REQUIRED_FLAGS2 "${CMAKE_REQUIRED_FLAGS}")
+            set(CMAKE_REQUIRED_FLAGS "${OLD_CMAKE_REQUIRED_FLAGS2} -march=rv64gcv_zvfh -mabi=lp64d")
+            check_cxx_source_compiles("
+              #include <riscv_vector.h>
+              int main() {
+                size_t vl = __riscv_vsetvl_e16m4(8);
+                vfloat16m4_t v = __riscv_vfmv_v_f_f16m4((_Float16)0.0f, vl);
+                (void)v;
+                return 0;
+              }"
+              HAS_RISCV64_RVV_ZVFH
+            )
+            set(CMAKE_REQUIRED_FLAGS "${OLD_CMAKE_REQUIRED_FLAGS2}")
+            unset(OLD_CMAKE_REQUIRED_FLAGS2)
+
+            if(HAS_RISCV64_RVV_ZVFH)
+              list(APPEND mlas_platform_srcs
+                ${MLAS_SRC_DIR}/riscv64/halfgemm_kernel_rvv.cpp
+              )
+              set_source_files_properties(
+                ${MLAS_SRC_DIR}/riscv64/halfgemm_kernel_rvv.cpp
+                PROPERTIES COMPILE_FLAGS "-march=rv64gcv_zvfh -mabi=lp64d")
+              list(APPEND mlas_private_compile_definitions MLAS_USE_RVV_ZVFH=1)
+            endif()
           else()
             message(
               WARNING
