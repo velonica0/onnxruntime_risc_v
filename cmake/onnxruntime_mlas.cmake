@@ -967,9 +967,11 @@ endif()
             if(HAS_RISCV64_RVV_ZVFH)
               list(APPEND mlas_platform_srcs
                 ${MLAS_SRC_DIR}/riscv64/halfgemm_kernel_rvv.cpp
+                ${MLAS_SRC_DIR}/riscv64/cast_kernel_rvv.cpp
               )
               set_source_files_properties(
                 ${MLAS_SRC_DIR}/riscv64/halfgemm_kernel_rvv.cpp
+                ${MLAS_SRC_DIR}/riscv64/cast_kernel_rvv.cpp
                 PROPERTIES COMPILE_FLAGS "-march=rv64gcv_zvfh -mabi=lp64d")
               list(APPEND mlas_private_compile_definitions MLAS_USE_RVV_ZVFH=1)
             endif()

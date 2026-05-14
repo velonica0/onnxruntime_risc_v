@@ -1228,6 +1228,11 @@ extern "C" {
     MLAS_CAST_F16_TO_F32_KERNEL MlasCastF16ToF32KernelNeon;
     MLAS_CAST_F32_TO_F16_KERNEL MlasCastF32ToF16KernelNeon;
 #endif
+
+#if defined(MLAS_TARGET_RISCV64) && defined(MLAS_USE_RVV_ZVFH)
+    MLAS_CAST_F16_TO_F32_KERNEL MlasCastF16ToF32KernelRvv;
+    MLAS_CAST_F32_TO_F16_KERNEL MlasCastF32ToF16KernelRvv;
+#endif
 }
 
 //
