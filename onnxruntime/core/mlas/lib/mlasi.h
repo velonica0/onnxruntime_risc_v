@@ -1391,6 +1391,10 @@ struct MLAS_ROPE_DISPATCH;
 extern const MLAS_ROPE_DISPATCH MlasRopeDispatchNeon;
 extern const MLAS_ROPE_DISPATCH MlasRopeDispatchAvx2;
 
+#if defined(MLAS_TARGET_RISCV64) && defined(MLAS_USE_RVV)
+extern const MLAS_ROPE_DISPATCH MlasRopeDispatchRvv;
+#endif
+
 //
 // half gemm dispatch structure
 //

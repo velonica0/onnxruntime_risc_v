@@ -12,9 +12,104 @@
 #include "core/util/force_inline.h"
 #include "core/util/math_cpuonly.h"
 
+#if defined(__riscv) && defined(__riscv_vector)
+#include <riscv_vector.h>
+#endif
+
 namespace onnxruntime {
 
 namespace {
+
+#if defined(__riscv) && defined(__riscv_vector)
+
+template <typename U>
+void ComputeJob(
+    const float* X_data,
+    const float* scale_data,
+    const float* bias_data,
+    const ptrdiff_t task_idx,
+    const int64_t norm_size,
+    const int64_t broadcast_param,
+    const float* scale_float_ptr,
+    const float* bias_float_ptr,
+    float epsilon,
+    bool simplified,
+    float* Y_data,
+    U* mean_data,
+    U* inv_std_dev_data,
+    AllocatorPtr alloc) {
+  ORT_UNUSED_PARAMETER(scale_float_ptr);
+  ORT_UNUSED_PARAMETER(bias_float_ptr);
+  ORT_UNUSED_PARAMETER(alloc);
+
+  const float* p_input = X_data + task_idx * norm_size;
+  float* p_output = Y_data + task_idx * norm_size;
+  const size_t n = static_cast<size_t>(norm_size);
+
+  // Pass 1: compute sum and sum-of-squares using RVV reduction
+  vfloat32m1_t vsum = __riscv_vfmv_v_f_f32m1(0.0f, __riscv_vsetvl_e32m1(1));
+  vfloat32m1_t vsumsq = __riscv_vfmv_v_f_f32m1(0.0f, __riscv_vsetvl_e32m1(1));
+
+  size_t i = 0;
+  while (i < n) {
+    size_t vl = __riscv_vsetvl_e32m4(n - i);
+    vfloat32m4_t vx = __riscv_vle32_v_f32m4(p_input + i, vl);
+    __riscv_vse32_v_f32m4(p_output + i, vx, vl);
+    vsum = __riscv_vfredusum_vs_f32m4_f32m1(vx, vsum, vl);
+    vfloat32m4_t vx2 = __riscv_vfmul_vv_f32m4(vx, vx, vl);
+    vsumsq = __riscv_vfredusum_vs_f32m4_f32m1(vx2, vsumsq, vl);
+    i += vl;
+  }
+
+  float mean_val = __riscv_vfmv_f_s_f32m1_f32(vsum) / static_cast<float>(norm_size);
+  float ms_val = __riscv_vfmv_f_s_f32m1_f32(vsumsq);
+  float denom;
+  if (simplified) {
+    denom = sqrtf(ms_val / static_cast<float>(norm_size) + epsilon);
+  } else {
+    denom = sqrtf(ms_val / static_cast<float>(norm_size) - mean_val * mean_val + epsilon);
+  }
+  float inv_denom = 1.0f / denom;
+
+  // Pass 2: normalize and scale using RVV
+  int64_t si = LAYER_NORM_SCALE_BIAS_OFFSET(broadcast_param, task_idx, norm_size);
+
+  i = 0;
+  while (i < n) {
+    size_t vl = __riscv_vsetvl_e32m4(n - i);
+    vfloat32m4_t vx = __riscv_vle32_v_f32m4(p_output + i, vl);
+    vfloat32m4_t vs = __riscv_vle32_v_f32m4(scale_data + si, vl);
+
+    if (simplified) {
+      vfloat32m4_t vy = __riscv_vfmul_vf_f32m4(vx, inv_denom, vl);
+      vy = __riscv_vfmul_vv_f32m4(vy, vs, vl);
+      __riscv_vse32_v_f32m4(p_output + i, vy, vl);
+    } else if (nullptr == bias_data) {
+      vfloat32m4_t vy = __riscv_vfsub_vf_f32m4(vx, mean_val, vl);
+      vy = __riscv_vfmul_vf_f32m4(vy, inv_denom, vl);
+      vy = __riscv_vfmul_vv_f32m4(vy, vs, vl);
+      __riscv_vse32_v_f32m4(p_output + i, vy, vl);
+    } else {
+      vfloat32m4_t vb = __riscv_vle32_v_f32m4(bias_data + si, vl);
+      vfloat32m4_t vy = __riscv_vfsub_vf_f32m4(vx, mean_val, vl);
+      vy = __riscv_vfmul_vf_f32m4(vy, inv_denom, vl);
+      vy = __riscv_vfmadd_vv_f32m4(vy, vs, vb, vl);
+      __riscv_vse32_v_f32m4(p_output + i, vy, vl);
+    }
+
+    si += static_cast<int64_t>(vl);
+    i += vl;
+  }
+
+  if (mean_data != nullptr) {
+    mean_data[task_idx] = gsl::narrow_cast<float>(mean_val);
+  }
+  if (inv_std_dev_data != nullptr) {
+    inv_std_dev_data[task_idx] = gsl::narrow_cast<float>(inv_denom);
+  }
+}
+
+#endif  // __riscv && __riscv_vector
 
 template <typename T,
           typename U,
