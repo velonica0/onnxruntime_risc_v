@@ -936,7 +936,6 @@ endif()
               ${MLAS_SRC_DIR}/riscv64/softmax_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/sconv_depthwise_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/sconv_nchwc_kernel_rvv.cpp
-              ${MLAS_SRC_DIR}/riscv64/qgemm_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/rotary_embedding_kernel_rvv.cpp
             )
             list(REMOVE_ITEM mlas_platform_srcs
@@ -947,7 +946,6 @@ endif()
               ${MLAS_SRC_DIR}/riscv64/softmax_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/sconv_depthwise_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/sconv_nchwc_kernel_rvv.cpp
-              ${MLAS_SRC_DIR}/riscv64/qgemm_kernel_rvv.cpp
               ${MLAS_SRC_DIR}/riscv64/rotary_embedding_kernel_rvv.cpp
               PROPERTIES COMPILE_FLAGS "-march=rv64gcv -mabi=lp64d")
             list(APPEND mlas_private_compile_definitions MLAS_USE_RVV=1)
