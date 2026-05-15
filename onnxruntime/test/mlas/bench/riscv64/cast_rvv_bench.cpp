@@ -10,14 +10,17 @@ Module Name:
 
 Abstract:
 
-    Correctness and performance comparison of RVV-accelerated FP16<->FP32
-    cast kernels against ORT's scalar fallback.
+    Correctness and performance comparison of FP16<->FP32 cast kernels.
+
+    Scalar path: ORT's internal fallback in cast.cpp
+      (MLAS_Half2Float / MLAS_Float2Half loop when CastKernel == nullptr)
+    Dispatch path: MlasConvertHalfToFloatBuffer / MlasConvertFloatToHalfBuffer
+      (dispatches to registered RVV kernel via platform.CastF16ToF32Kernel)
 
 --*/
 
 #include "mlas.h"
 #include "mlas_float16.h"
-#include "mlasi.h"
 
 #include <chrono>
 #include <cmath>
@@ -31,9 +34,9 @@ Abstract:
 namespace {
 
 struct Options {
-    size_t count = 1024 * 1024;
-    size_t iters = 50;
-    size_t warmup = 5;
+    size_t count = 1024 * 64;
+    size_t iters = 200;
+    size_t warmup = 20;
 };
 
 Options ParseArgs(int argc, char** argv) {
@@ -69,122 +72,87 @@ double TimeLoop(size_t iterations, Fn&& fn) {
     return std::chrono::duration<double, std::milli>(end - begin).count();
 }
 
-void ScalarF16ToF32(const unsigned short* src, float* dst, size_t count) {
-    for (size_t i = 0; i < count; ++i) {
-        dst[i] = MLAS_Half2Float(src[i]);
-    }
-}
-
-void ScalarF32ToF16(const float* src, unsigned short* dst, size_t count) {
-    for (size_t i = 0; i < count; ++i) {
-        dst[i] = MLAS_Float2Half(src[i]);
-    }
-}
-
-void CheckF16ToF32(const char* label, const float* ref, const float* got, size_t count) {
-    double max_abs = 0.0;
-    size_t mismatches = 0;
-    for (size_t i = 0; i < count; ++i) {
-        double err = std::abs(ref[i] - got[i]);
-        if (err > max_abs) max_abs = err;
-        if (err > 0.0) mismatches++;
-    }
-    std::cout << "  " << label << ": max_abs=" << max_abs
-              << " mismatches=" << mismatches << "/" << count
-              << (mismatches == 0 ? " PASS" : " FAIL") << "\n";
-}
-
-void CheckF32ToF16(const char* label, const unsigned short* ref, const unsigned short* got, size_t count) {
-    size_t mismatches = 0;
-    size_t max_diff = 0;
-    for (size_t i = 0; i < count; ++i) {
-        size_t diff = (ref[i] > got[i]) ? (ref[i] - got[i]) : (got[i] - ref[i]);
-        if (diff > max_diff) max_diff = diff;
-        if (diff > 0) mismatches++;
-    }
-    std::cout << "  " << label << ": max_lsb_diff=" << max_diff
-              << " mismatches=" << mismatches << "/" << count
-              << (mismatches == 0 ? " PASS" : " FAIL") << "\n";
-}
-
 }  // namespace
 
 int main(int argc, char** argv) {
     const Options opts = ParseArgs(argc, argv);
     const size_t N = opts.count;
 
-    std::cout << "=== FP16<->FP32 Cast: RVV vs Scalar ===\n"
+    std::cout << "=== FP16<->FP32 Cast: RVV Dispatch vs ORT Scalar FallBack ===\n"
               << "  count=" << N << " iters=" << opts.iters << " warmup=" << opts.warmup << "\n\n";
 
     std::vector<float> fp32_src(N);
-    std::vector<unsigned short> fp16_src(N);
+    std::vector<_mlas_fp16_> fp16_src(N);
     for (size_t i = 0; i < N; ++i) {
         fp32_src[i] = MakeValue(i);
         fp16_src[i] = MLAS_Float2Half(fp32_src[i]);
     }
 
-    std::vector<float> f16_to_f32_scalar(N);
-    std::vector<float> f16_to_f32_rvv(N);
-    std::vector<unsigned short> f32_to_f16_scalar(N);
-    std::vector<unsigned short> f32_to_f16_rvv(N);
+    std::vector<float> f16_to_f32_fallback(N), f16_to_f32_dispatch(N);
+    std::vector<_mlas_fp16_> f32_to_f16_fallback(N), f32_to_f16_dispatch(N);
 
-    auto* rvv_f16_to_f32 = GetMlasPlatform().CastF16ToF32Kernel;
-    auto* rvv_f32_to_f16 = GetMlasPlatform().CastF32ToF16Kernel;
+    // ORT scalar fallback: same as cast.cpp when CastF16ToF32Kernel == nullptr
+    //   for (i) Destination[i] = Source[i].ToFloat();  // calls MLAS_Half2Float
+    auto fallback_h2f = [&]() {
+        for (size_t i = 0; i < N; ++i)
+            f16_to_f32_fallback[i] = MLAS_Half2Float(fp16_src[i]);
+    };
+    auto fallback_f2h = [&]() {
+        for (size_t i = 0; i < N; ++i)
+            f32_to_f16_fallback[i] = MLAS_Float2Half(fp32_src[i]);
+    };
 
-    if (!rvv_f16_to_f32 || !rvv_f32_to_f16) {
-        std::cerr << "RVV cast kernels not registered.\n";
-        return 1;
-    }
+    // ORT dispatch path: MlasConvertHalfToFloatBuffer (uses registered RVV kernel)
+    auto dispatch_h2f = [&]() {
+        MlasConvertHalfToFloatBuffer(
+            reinterpret_cast<const MLAS_FP16*>(fp16_src.data()),
+            f16_to_f32_dispatch.data(), N);
+    };
+    auto dispatch_f2h = [&]() {
+        MlasConvertFloatToHalfBuffer(
+            fp32_src.data(),
+            reinterpret_cast<MLAS_FP16*>(f32_to_f16_dispatch.data()), N);
+    };
 
     // --- Correctness ---
-    ScalarF16ToF32(fp16_src.data(), f16_to_f32_scalar.data(), N);
-    rvv_f16_to_f32(fp16_src.data(), f16_to_f32_rvv.data(), N);
+    fallback_h2f(); dispatch_h2f();
+    fallback_f2h(); dispatch_f2h();
 
-    ScalarF32ToF16(fp32_src.data(), f32_to_f16_scalar.data(), N);
-    rvv_f32_to_f16(fp32_src.data(), f32_to_f16_rvv.data(), N);
+    size_t h2f_mismatches = 0;
+    for (size_t i = 0; i < N; ++i) {
+        if (f16_to_f32_fallback[i] != f16_to_f32_dispatch[i]) h2f_mismatches++;
+    }
+    size_t f2h_mismatches = 0;
+    for (size_t i = 0; i < N; ++i) {
+        if (f32_to_f16_fallback[i] != f32_to_f16_dispatch[i]) f2h_mismatches++;
+    }
 
-    std::cout << "Correctness:\n";
-    CheckF16ToF32("F16->F32", f16_to_f32_scalar.data(), f16_to_f32_rvv.data(), N);
-    CheckF32ToF16("F32->F16", f32_to_f16_scalar.data(), f32_to_f16_rvv.data(), N);
+    std::cout << "Correctness:\n"
+              << "  F16->F32: mismatches=" << h2f_mismatches << "/" << N
+              << (h2f_mismatches == 0 ? " PASS" : " FAIL") << "\n"
+              << "  F32->F16: mismatches=" << f2h_mismatches << "/" << N
+              << (f2h_mismatches == 0 ? " PASS" : " FAIL") << "\n";
 
     // --- Performance ---
     for (size_t i = 0; i < opts.warmup; ++i) {
-        ScalarF16ToF32(fp16_src.data(), f16_to_f32_scalar.data(), N);
-        rvv_f16_to_f32(fp16_src.data(), f16_to_f32_rvv.data(), N);
-        ScalarF32ToF16(fp32_src.data(), f32_to_f16_scalar.data(), N);
-        rvv_f32_to_f16(fp32_src.data(), f32_to_f16_rvv.data(), N);
+        fallback_h2f(); dispatch_h2f();
+        fallback_f2h(); dispatch_f2h();
     }
 
-    double scalar_h2f = TimeLoop(opts.iters, [&]() {
-        ScalarF16ToF32(fp16_src.data(), f16_to_f32_scalar.data(), N);
-    }) / opts.iters;
-
-    double rvv_h2f = TimeLoop(opts.iters, [&]() {
-        rvv_f16_to_f32(fp16_src.data(), f16_to_f32_rvv.data(), N);
-    }) / opts.iters;
-
-    double scalar_f2h = TimeLoop(opts.iters, [&]() {
-        ScalarF32ToF16(fp32_src.data(), f32_to_f16_scalar.data(), N);
-    }) / opts.iters;
-
-    double rvv_f2h = TimeLoop(opts.iters, [&]() {
-        rvv_f32_to_f16(fp32_src.data(), f32_to_f16_rvv.data(), N);
-    }) / opts.iters;
-
-    double bw_h2f_scalar = (N * (2 + 4)) / (scalar_h2f * 1e6);
-    double bw_h2f_rvv = (N * (2 + 4)) / (rvv_h2f * 1e6);
-    double bw_f2h_scalar = (N * (4 + 2)) / (scalar_f2h * 1e6);
-    double bw_f2h_rvv = (N * (4 + 2)) / (rvv_f2h * 1e6);
+    double s_h2f = TimeLoop(opts.iters, fallback_h2f) / opts.iters;
+    double d_h2f = TimeLoop(opts.iters, dispatch_h2f) / opts.iters;
+    double s_f2h = TimeLoop(opts.iters, fallback_f2h) / opts.iters;
+    double d_f2h = TimeLoop(opts.iters, dispatch_f2h) / opts.iters;
 
     std::cout << std::fixed << std::setprecision(3)
               << "\nF16->F32 (" << N << " elements):\n"
-              << "  Scalar:  " << scalar_h2f << " ms  (" << bw_h2f_scalar << " GB/s)\n"
-              << "  RVV:     " << rvv_h2f << " ms  (" << bw_h2f_rvv << " GB/s)\n"
-              << "  Speedup: " << scalar_h2f / rvv_h2f << "x\n"
+              << "  ORT FallBack: " << s_h2f << " ms\n"
+              << "  ORT Dispatch: " << d_h2f << " ms\n"
+              << "  Speedup:      " << s_h2f / d_h2f << "x\n"
               << "\nF32->F16 (" << N << " elements):\n"
-              << "  Scalar:  " << scalar_f2h << " ms  (" << bw_f2h_scalar << " GB/s)\n"
-              << "  RVV:     " << rvv_f2h << " ms  (" << bw_f2h_rvv << " GB/s)\n"
-              << "  Speedup: " << scalar_f2h / rvv_f2h << "x\n";
+              << "  ORT FallBack: " << s_f2h << " ms\n"
+              << "  ORT Dispatch: " << d_f2h << " ms\n"
+              << "  Speedup:      " << s_f2h / d_f2h << "x\n";
 
-    return 0;
+    return (h2f_mismatches + f2h_mismatches > 0) ? 1 : 0;
 }

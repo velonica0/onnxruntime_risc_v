@@ -1471,15 +1471,26 @@ if (NOT onnxruntime_ENABLE_TRAINING_TORCH_INTEROP)
     set_target_properties(onnxruntime_mlas_cast_rvv_bench PROPERTIES FOLDER "ONNXRuntimeTest")
 
     onnxruntime_add_executable(
-      onnxruntime_mlas_rope_ln_gather_bench
-      ${MLAS_RISCV64_BENCH_DIR}/rope_ln_gather_bench.cpp)
-    target_include_directories(onnxruntime_mlas_rope_ln_gather_bench PRIVATE
+      onnxruntime_mlas_rope_rvv_bench
+      ${MLAS_RISCV64_BENCH_DIR}/rope_rvv_bench.cpp)
+    target_include_directories(onnxruntime_mlas_rope_rvv_bench PRIVATE
       ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}/core/mlas/lib)
     target_link_libraries(
-      onnxruntime_mlas_rope_ln_gather_bench
+      onnxruntime_mlas_rope_rvv_bench
       PRIVATE ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common ${CMAKE_DL_LIBS})
-    target_compile_definitions(onnxruntime_mlas_rope_ln_gather_bench PRIVATE ${mlas_private_compile_definitions})
-    set_target_properties(onnxruntime_mlas_rope_ln_gather_bench PROPERTIES FOLDER "ONNXRuntimeTest")
+    target_compile_definitions(onnxruntime_mlas_rope_rvv_bench PRIVATE ${mlas_private_compile_definitions})
+    set_target_properties(onnxruntime_mlas_rope_rvv_bench PROPERTIES FOLDER "ONNXRuntimeTest")
+
+    onnxruntime_add_executable(
+      onnxruntime_mlas_rmsnorm_rvv_bench
+      ${MLAS_RISCV64_BENCH_DIR}/rmsnorm_rvv_bench.cpp)
+    target_include_directories(onnxruntime_mlas_rmsnorm_rvv_bench PRIVATE
+      ${ONNXRUNTIME_ROOT}/core/mlas/inc ${ONNXRUNTIME_ROOT}/core/mlas/lib)
+    target_link_libraries(
+      onnxruntime_mlas_rmsnorm_rvv_bench
+      PRIVATE ${ONNXRUNTIME_MLAS_LIBS} onnxruntime_common ${CMAKE_DL_LIBS})
+    target_compile_definitions(onnxruntime_mlas_rmsnorm_rvv_bench PRIVATE ${mlas_private_compile_definitions})
+    set_target_properties(onnxruntime_mlas_rmsnorm_rvv_bench PROPERTIES FOLDER "ONNXRuntimeTest")
   endif()
 
   if(WIN32)
